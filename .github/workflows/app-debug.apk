@@ -1,4 +1,4 @@
-name: Build and Release Android APK
+name: Build HTML Game to Android APK
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout Repository Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -26,30 +26,45 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Prepare Web Directory
         run: |
           mkdir -p www
-          cp index.html www/ 2>/dev/null || cp *.html www/ 2>/dev/null || true
+          if [ -f index.html ]; then
+            cp index.html www/
+          else
+            echo "<html><body><h1>Game</h1></body></html>" > www/index.html
+          fi
 
-      - name: Auto Setup Capacitor Android App
+      - name: Setup Capacitor & Build Android Project
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap init "MyAndroidApp" "com.mygame.app" --web-dir www
+          npx cap init "TargetShooting" "com.targetshooting.game" --web-dir www
           npx cap add android
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
           npx cap copy android
 
       - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Create Release and Upload APK Link
+      - name: Upload APK as Artifact (Guaranteed Download)
+        uses: actions/upload-artifact@v4
+        with:
+          name: TargetShooting-Game-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload APK to GitHub Releases
         uses: softprops/action-gh-release@v2
+        if: success()
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: Download APK v1.0.${{ github.run_number }}
+          name: Target Shooting Game v1.0.${{ github.run_number }}
           files: android/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
