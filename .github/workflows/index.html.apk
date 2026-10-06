@@ -1,4 +1,4 @@
-name: Build HTML Game to Android APK
+name: Build HTML Mobile Game to Android APK Download
 
 on:
   push:
